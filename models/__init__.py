@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class BoardState(str, Enum):
@@ -103,3 +103,46 @@ class Board(BaseModel):
         for row in self.board:
             rows.append(wall.join((str(elem) if elem else " " for elem in row)))
         return f"\n{horizontal_line}\n".join(rows)
+
+    def validate_dimensions(self) -> None:
+        number_of_rows = len(self.board)
+        number_of_cols = len(self.board[0])
+        if number_of_rows != number_of_cols:
+            raise ValueError("board must be a square")
+
+    def validate_uniform_rows(self) -> None:
+        if len(set((len(row) for row in self.board))) != 1:
+            raise ValueError("All rows must be of the same size")
+
+    def moves_by_alignment(self) -> dict[Alignment, int]:
+        move_counts = {alignment: 0 for alignment in Alignment}
+
+        for row in self.board:
+            for cell in row:
+                if cell is not None:
+                    move_counts[cell] += 1
+
+        return move_counts
+
+    def alignment_ahead(self) -> Alignment | None:
+        moves = self.moves_by_alignment()
+        if moves[Alignment.X] == moves[Alignment.O]:
+            return
+        return max(moves.items(), key=lambda x: x[1])[0]
+
+    def validate_valid_move_sequence(self) -> None:
+        moves = self.moves_by_alignment()
+        if abs(moves[Alignment.X] - moves[Alignment.O]) > 1:
+            raise ValueError(
+                "The number of moves made by each alignment diverges by more than one"
+            )
+
+    @model_validator(mode="after")
+    def validate_board(self) -> "Board":
+        try:
+            self.validate_dimensions()
+            self.validate_uniform_rows()
+            self.validate_valid_move_sequence()
+        except ValueError as e:
+            raise ValueError(f"Invalid board state: {str(e)}")
+        return self
