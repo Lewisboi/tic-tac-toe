@@ -18,10 +18,14 @@ app.add_middleware(
 
 @app.post("/get-play")
 def get_playlist_data_endpoint(play_request: PlayRequest) -> PlayResponse:
-    board = play_request.board
     alignment = play_request.alignment
-    if (ahead := board.alignment_ahead()) and not alignment:
+    if (ahead := play_request.alignment_ahead()) and not alignment:
         alignment = ahead.other()
-    if (state := board.state()) == BoardState.ONGOING:
-        play = AIPlayer().get_play(board=board, alignment=alignment)
+    if not alignment:
+        raise ValueError(
+            "Alignment is not present and cannot be inferred from board state"
+        )
+    play = None
+    if (state := play_request.state()) == BoardState.ONGOING:
+        play = AIPlayer().get_play(board=play_request, alignment=alignment)
     return PlayResponse(status=state, play=play)

@@ -1,12 +1,11 @@
 from models import Board, Alignment, Play, BaseModel, BoardState, model_validator
 
 
-class PlayRequest(BaseModel):
-    board: Board
+class PlayRequest(Board):
     alignment: Alignment | None = None
 
     def validate_next_play_is_valid(self) -> None:
-        ahead = self.board.alignment_ahead()
+        ahead = self.alignment_ahead()
         if not ahead:
             return
         if ahead == self.alignment:
